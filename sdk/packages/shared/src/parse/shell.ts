@@ -1,3 +1,5 @@
+import { existsSync } from "fs";
+
 function normalizeShellName(shell: string): string {
 	const normalizedPath = shell.replaceAll("\\", "/");
 	const lastSeparatorIndex = normalizedPath.lastIndexOf("/");
@@ -9,7 +11,12 @@ function normalizeShellName(shell: string): string {
 }
 
 export function getDefaultShell(platform: string): string {
-	return platform === "win32" ? "powershell" : "/bin/bash";
+	if (platform === "win32") return "powershell";
+    const envShell = process.env.SHELL?.trim();
+    if (envShell && existsSync(envShell)) return envShell;
+    if (existsSync("/bin/bash")) return "/bin/bash";
+    if (existsSync("/bin/sh")) return "/bin/sh";
+    return "/bin/sh";
 }
 
 export function getShellArgs(shell: string, command: string): string[] {

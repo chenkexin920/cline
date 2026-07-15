@@ -1,5 +1,6 @@
 import { chmod, mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	clearHubDiscovery,
@@ -24,6 +25,10 @@ function captureEnv(): EnvSnapshot {
 function restoreEnv(snapshot: EnvSnapshot): void {
 	process.env.CLINE_DATA_DIR = snapshot.CLINE_DATA_DIR;
 	process.env.CLINE_HUB_DISCOVERY_PATH = snapshot.CLINE_HUB_DISCOVERY_PATH;
+}
+
+function makeTempDataDir(): string {
+    return join(tmpdir(), `cline-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 }
 
 describe("hub discovery", () => {
@@ -61,7 +66,7 @@ describe("hub discovery", () => {
 	it("writes and clears discovery records at the resolved location", async () => {
 		snapshot = captureEnv();
 		delete process.env.CLINE_HUB_DISCOVERY_PATH;
-		process.env.CLINE_DATA_DIR = "/tmp/cline-data";
+		process.env.CLINE_DATA_DIR = makeTempDataDir();
 
 		const discoveryPath = resolveHubOwnerContext("shared").discoveryPath;
 		const record = {
@@ -93,7 +98,7 @@ describe("hub discovery", () => {
 	it("rejects discovery records without an auth token", async () => {
 		snapshot = captureEnv();
 		delete process.env.CLINE_HUB_DISCOVERY_PATH;
-		process.env.CLINE_DATA_DIR = "/tmp/cline-data";
+		process.env.CLINE_DATA_DIR = makeTempDataDir();
 
 		const discoveryPath = resolveHubOwnerContext("missing-auth").discoveryPath;
 		await mkdir(dirname(discoveryPath), { recursive: true });

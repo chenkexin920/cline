@@ -4,8 +4,15 @@ import { getDefaultShell, getShellArgs } from "./shell";
 describe("shell helpers", () => {
 	it("selects PowerShell on Windows and bash elsewhere", () => {
 		expect(getDefaultShell("win32")).toBe("powershell");
-		expect(getDefaultShell("darwin")).toBe("/bin/bash");
-		expect(getDefaultShell("linux")).toBe("/bin/bash");
+		
+		// Non-Windows: returns SHELL env (or /bin/bash if it exists, falling back to /bin/sh).
+		// This handles cross-platform shells (bash, zsh, /bin/sh on HongMeng PC, etc.) without
+		// hardcoding a single path.
+		for (const platform of ["darwin", "linux", "openharmony", "freebsd"] as const) {
+			const shell = getDefaultShell(platform);
+			expect(shell).toMatch(/sh$/);  // ends with "sh"
+			expect(shell.startsWith("/") || shell.includes("/")).toBe(true);  // is a path
+		}
 	});
 
 	it("uses PowerShell flags for PowerShell executables", () => {

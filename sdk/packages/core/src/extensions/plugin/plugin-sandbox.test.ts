@@ -435,7 +435,8 @@ describe("plugin-sandbox", () => {
 
 			const sandboxed = await loadSandboxedPlugins({
 				pluginPaths: [pluginPath],
-				hookTimeoutMs: 50,
+				importTimeoutMs: 30000,    // ← 新增：sandbox 初始化阶段 30s
+				hookTimeoutMs: 50,         // ← 保留：hook 调用 50ms（这个是测试核心）
 			});
 			const extension = sandboxed.extensions?.[0];
 			await expect(

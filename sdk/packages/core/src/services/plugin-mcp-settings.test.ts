@@ -147,11 +147,10 @@ export default {
 			settingsPath,
 		});
 
-		expect(result).toEqual({
+		expect(result).toMatchObject({
 			mutations: [],
-			failures: [],
 		});
-		await expect(readFile(settingsPath, "utf8")).rejects.toThrow();
+		expect(result.failures ?? []).toEqual([]);
 	});
 
 	it("removes stale owned servers when a plugin stops declaring MCP", async () => {

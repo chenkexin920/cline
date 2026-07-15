@@ -16,6 +16,7 @@ import {
 	type HookSessionContext,
 	type WorkspaceInfo,
 	withResolvedClineBuildEnv,
+	getDefaultShell,
 } from "@cline/shared";
 import { ensureHookLogDir } from "@cline/shared/storage";
 import { createAgentHooksExtension } from "./hook-extension";
@@ -304,13 +305,32 @@ async function runHookCommand(
 			process.platform,
 			error,
 		);
-		if (!fallbackCommand) {
-			throw error;
+		if (fallbackCommand) {
+			return await runHookCommandOnce(payload, { ...options, command: fallbackCommand });
 		}
-		return await runHookCommandOnce(payload, {
-			...options,
-			command: fallbackCommand,
-		});
+		
+		// New: shell ENOENT fallback (for legacy hook files that requested "bash" on
+		// a platform where bash is missing, e.g. HongMeng PC)
+		if (
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			(error as NodeJS.ErrnoException).code === "ENOENT"
+		) {
+			const requestedShell = options.command[0];
+			const knownShells = new Set(["bash", "/bin/bash", "sh", "/bin/sh"]);
+			if (typeof requestedShell === "string" && knownShells.has(requestedShell)) {
+				const fallbackShell = getDefaultShell(process.platform);
+				if (fallbackShell !== requestedShell) {
+					return await runHookCommandOnce(payload, {
+						...options,
+						command: [fallbackShell, ...options.command.slice(1)],
+					});
+				}
+			}
+		}
+		
+		throw error;
 	}
 }
 
@@ -501,8 +521,11 @@ function inferHookCommand(path: string): string[] {
 			path,
 		];
 	}
-	// Default to bash for legacy hook files with no extension/shebang.
-	return ["bash", path];
+	// Default to a shell fallback for legacy hook files with no extension/shebang.
+	// Use getDefaultShell (same as BashExecutor) so the shell is the one that
+	// actually exists on this platform (e.g. /bin/sh on HongMeng PC where
+	// /bin/bash is missing).
+	return [getDefaultShell(process.platform), path];
 }
 
 function createHookCommandMap(workspacePath: string): HookCommandMap {
